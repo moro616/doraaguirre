@@ -208,7 +208,7 @@
     <p class="hint">Basado en los pagos acreditados por Mercado Pago.</p>
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px">
       <input id="ingMes" type="month" style="margin-bottom:0;flex:1" onchange="loadIngresos()">
-      <button class="btn-ghost btn-sm" style="width:auto;white-space:nowrap" onclick="exportarIngresosCSV()">⬇ Descargar CSV</button>
+      <button class="btn-ghost btn-sm" style="width:auto;white-space:nowrap" onclick="exportarIngresosPDF()">⬇ Descargar PDF</button>
     </div>
 
     <div class="card" style="text-align:center;margin:0 0 18px">
@@ -227,24 +227,52 @@
   <!-- ---- CONFIG ---- -->
   <section id="s-conf">
     <h3 style="margin:0 0 4px">Ajustes</h3>
-    <p class="hint">Datos del local y monto de la seña.</p>
+    <p class="hint">Datos del local, seña y reservas.</p>
     <div class="add-box">
       <label>Nombre del local</label>
       <input id="cNom" placeholder="Mi Estética">
       <label>WhatsApp (con código país)</label>
       <input id="cWsp" placeholder="5493410000000">
+      <label>Instagram (usuario, sin @)</label>
+      <input id="cInsta" placeholder="miestetica">
       <label>Seña a cobrar $</label>
       <input id="cSenia" type="number" placeholder="3000">
-      <button class="btn-gold" onclick="saveConf()">Guardar cambios</button>
+      <label>Anticipación mínima para reservar (horas)</label>
+      <input id="cAntic" type="number" min="0" placeholder="0">
+      <p class="hint" style="margin:-8px 0 14px">Ej: 2 = no se puede reservar con menos de 2 horas de anticipación. Dejalo en 0 para no exigir anticipación.</p>
+
+      <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:.95rem;color:var(--ink);margin-bottom:8px">
+        <input type="checkbox" id="cPausado" style="width:auto;margin:0" onchange="togglePausadoMsg()">
+        Cerrar reservas temporalmente (vacaciones, etc.)
+      </label>
+      <div id="pausadoMsgBox" style="display:none">
+        <label>Mensaje para las clientas</label>
+        <input id="cPausadoMsg" placeholder="Estamos de vacaciones, volvemos el 20/07">
+      </div>
+
+      <button class="btn-gold" onclick="saveConf()" style="margin-top:6px">Guardar cambios</button>
+    </div>
+
+    <div class="add-box">
+      <h3 style="margin:0 0 14px;font-size:1rem">Cambiar mi contraseña</h3>
+      <label>Nueva contraseña</label>
+      <div class="pass-wrap">
+        <input id="cPass1" type="password" placeholder="••••••••" autocomplete="new-password">
+        <button type="button" class="pass-toggle" onclick="togglePass(this,'cPass1')">👁️</button>
+      </div>
+      <label>Repetir contraseña</label>
+      <input id="cPass2" type="password" placeholder="••••••••" autocomplete="new-password">
+      <button class="btn-gold" onclick="cambiarPassword()">Cambiar contraseña</button>
+      <p id="passMsg" style="font-size:.85rem;margin:12px 0 0"></p>
     </div>
   </section>
 
   <footer>
     <div>
-      <b style="color:var(--ink)">Dora Aguirre · Belleza integral</b><br>
-      <a href="https://instagram.com/doraaguirre.esteticaintegral" target="_blank">@doraaguirre.esteticaintegral</a>
-      &nbsp;·&nbsp;
-      <a href="https://wa.me/5493476530972" target="_blank">WhatsApp 3476-530972</a>
+      <b id="fNombre" style="color:var(--ink)">Dora Aguirre · Belleza integral</b><br>
+      <a id="fInsta" href="#" target="_blank"></a>
+      <span id="fSep">&nbsp;·&nbsp;</span>
+      <a id="fWsp" href="#" target="_blank"></a>
     </div>
     <div class="brand">
       © 2026 Todos los derechos reservados<br>
@@ -256,6 +284,7 @@
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 /* ================================================================
    CONFIG — Lucas: reemplazá estos dos valores por los de tu proyecto
@@ -274,8 +303,8 @@ function showToast(msg){
 }
 
 /* ---------- LOGIN ---------- */
-function togglePass(btn){
-  const i=document.getElementById('pass');
+function togglePass(btn,id){
+  const i=document.getElementById(id||'pass');
   const show = i.type==='password';
   i.type = show ? 'text' : 'password';
   btn.textContent = show ? '🙈' : '👁️';
@@ -314,19 +343,56 @@ async function loadConf(){
   if(data){
     document.getElementById('cNom').value=data.nombre_local;
     document.getElementById('cWsp').value=data.whatsapp;
+    document.getElementById('cInsta').value=data.instagram||'';
     document.getElementById('cSenia').value=data.senia;
+    document.getElementById('cAntic').value=data.anticipacion_horas||0;
+    document.getElementById('cPausado').checked=!!data.pausado;
+    document.getElementById('cPausadoMsg').value=data.pausado_mensaje||'';
+    togglePausadoMsg();
     document.getElementById('hLocal').textContent=data.nombre_local;
+    pintarFooter(data);
   }
 }
 async function saveConf(){
   const {error}=await sb.from('config').update({
     nombre_local:document.getElementById('cNom').value.trim(),
     whatsapp:document.getElementById('cWsp').value.trim(),
-    senia:parseInt(document.getElementById('cSenia').value)||0
+    instagram:document.getElementById('cInsta').value.trim().replace(/^@/,''),
+    senia:parseInt(document.getElementById('cSenia').value)||0,
+    anticipacion_horas:parseInt(document.getElementById('cAntic').value)||0,
+    pausado:document.getElementById('cPausado').checked,
+    pausado_mensaje:document.getElementById('cPausadoMsg').value.trim()
   }).eq('id',1);
   if(error){showToast('Error al guardar');return;}
   document.getElementById('hLocal').textContent=document.getElementById('cNom').value;
   showToast('Ajustes guardados');
+  loadConf();
+}
+function togglePausadoMsg(){
+  document.getElementById('pausadoMsgBox').style.display=
+    document.getElementById('cPausado').checked?'block':'none';
+}
+function pintarFooter(cfg){
+  document.getElementById('fNombre').textContent=cfg.nombre_local||'';
+  const insta=cfg.instagram;
+  const fi=document.getElementById('fInsta');
+  if(insta){fi.href='https://instagram.com/'+insta;fi.textContent='@'+insta;fi.style.display='';document.getElementById('fSep').style.display='';}
+  else{fi.style.display='none';document.getElementById('fSep').style.display='none';}
+  const wspNum=(cfg.whatsapp||'').replace(/[^0-9]/g,'');
+  const fw=document.getElementById('fWsp');
+  if(wspNum){fw.href='https://wa.me/'+wspNum;fw.textContent='WhatsApp';fw.style.display='';}
+  else{fw.style.display='none';}
+}
+async function cambiarPassword(){
+  const p1=document.getElementById('cPass1').value;
+  const p2=document.getElementById('cPass2').value;
+  const msg=document.getElementById('passMsg');
+  if(!p1||p1.length<6){msg.style.color='var(--danger)';msg.textContent='La contraseña debe tener al menos 6 caracteres.';return;}
+  if(p1!==p2){msg.style.color='var(--danger)';msg.textContent='Las contraseñas no coinciden.';return;}
+  const {error}=await sb.auth.updateUser({password:p1});
+  if(error){msg.style.color='var(--danger)';msg.textContent='Error: '+error.message;return;}
+  msg.style.color='var(--ok)';msg.textContent='Contraseña actualizada.';
+  document.getElementById('cPass1').value='';document.getElementById('cPass2').value='';
 }
 
 /* ---------- SERVICIOS ---------- */
@@ -571,38 +637,133 @@ async function loadIngresos(){
   }
 }
 
-function csvCampo(v){
-  const s=String(v??'');
-  return /[",;\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
-}
-function exportarIngresosCSV(){
-  if(!_ingMesCache){showToast('Elegí un mes primero');return;}
-  const filas=[['Fecha turno','Hora','Cliente','WhatsApp','Servicio','Tipo de pago','Monto pagado','Fecha de pago']];
-  _ingCache.forEach(t=>{
-    filas.push([
-      t.fecha||'',
-      (t.hora||'').slice(0,5),
-      t.cliente_nombre||'',
-      t.cliente_wsp||'',
-      t.servicio_nombre||'',
-      t.tipo_pago==='total'?'Total':'Seña',
-      t.monto_pagado||0,
-      t.pagado_en?new Date(t.pagado_en).toLocaleString('es-AR'):''
-    ]);
-  });
-  const total=_ingCache.reduce((a,t)=>a+(t.monto_pagado||0),0);
-  filas.push([]);
-  filas.push(['','','','','','Total del mes',total,'']);
+function recortar(s,n){s=String(s||'');return s.length>n?s.slice(0,n-1)+'…':s;}
 
-  const BOM=String.fromCharCode(0xFEFF);
-  const csv=BOM+filas.map(f=>f.map(csvCampo).join(';')).join('\r\n');
-  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url;a.download=`ingresos-dora-${_ingMesCache}.csv`;
-  document.body.appendChild(a);a.click();a.remove();
-  URL.revokeObjectURL(url);
-  showToast('CSV descargado');
+/* dibuja un gráfico de barras horizontal en un canvas y lo devuelve como imagen */
+function dibujarBarrasCanvas(entries){
+  const W=1000, rowH=54, padTop=14, padBottom=14;
+  const H=padTop+padBottom+rowH*entries.length;
+  const cv=document.createElement('canvas');
+  cv.width=W;cv.height=H;
+  const ctx=cv.getContext('2d');
+  ctx.fillStyle='#ffffff';ctx.fillRect(0,0,W,H);
+  const max=Math.max(...entries.map(e=>e[1]),1);
+  const labelW=270, montoW=150, barMaxW=W-labelW-montoW-20;
+  entries.forEach(([nombre,monto],i)=>{
+    const y=padTop+i*rowH;
+    ctx.fillStyle='#2b2b2b';
+    ctx.font='24px Arial';
+    ctx.textBaseline='middle';
+    ctx.fillText(recortar(nombre,26), 0, y+rowH/2);
+    const barW=Math.max(6, Math.round(monto/max*barMaxW));
+    ctx.fillStyle='#43969c';
+    roundRect(ctx, labelW, y+12, barW, rowH-24, 8);
+    ctx.fillStyle='#357a80';
+    ctx.font='bold 24px Arial';
+    ctx.fillText('$'+monto.toLocaleString('es-AR'), labelW+barW+16, y+rowH/2);
+  });
+  return {dataUrl:cv.toDataURL('image/png'), w:W, h:H};
+}
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();ctx.fill();
+}
+
+async function exportarIngresosPDF(){
+  if(!_ingMesCache){showToast('Elegí un mes primero');return;}
+  if(!(window.jspdf&&window.jspdf.jsPDF)){showToast('No se pudo cargar el generador de PDF. Revisá tu conexión.');return;}
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({unit:'pt',format:'a4'});
+  const pageW=doc.internal.pageSize.getWidth();
+  const pageH=doc.internal.pageSize.getHeight();
+  const marginX=40, marginBottom=50;
+  let y=54;
+
+  const [yy,mm]=_ingMesCache.split('-').map(Number);
+  let mesNombre=new Date(yy,mm-1,1).toLocaleDateString('es-AR',{month:'long',year:'numeric'});
+  mesNombre=mesNombre.charAt(0).toUpperCase()+mesNombre.slice(1);
+
+  doc.setFont('helvetica','bold');doc.setFontSize(17);doc.setTextColor(53,122,128);
+  doc.text('Dora Aguirre · Belleza integral', marginX, y); y+=20;
+  doc.setFont('helvetica','normal');doc.setFontSize(12);doc.setTextColor(130,130,130);
+  doc.text('Reporte de ingresos — '+mesNombre, marginX, y); y+=30;
+
+  const total=_ingCache.reduce((a,t)=>a+(t.monto_pagado||0),0);
+  doc.setFont('helvetica','bold');doc.setFontSize(24);doc.setTextColor(30,30,30);
+  doc.text('$'+total.toLocaleString('es-AR'), marginX, y); y+=16;
+  doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(140,140,140);
+  doc.text(`${_ingCache.length} pago${_ingCache.length!==1?'s':''} acreditado${_ingCache.length!==1?'s':''} este mes`, marginX, y); y+=26;
+
+  // desglose por servicio (gráfico de barras)
+  const porServ={};
+  _ingCache.forEach(t=>{const k=t.servicio_nombre||'Otro';porServ[k]=(porServ[k]||0)+(t.monto_pagado||0);});
+  const entries=Object.entries(porServ).sort((a,b)=>b[1]-a[1]);
+
+  if(entries.length){
+    doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(43,43,43);
+    doc.text('Por servicio', marginX, y); y+=8;
+    const chart=dibujarBarrasCanvas(entries);
+    const imgW=pageW-marginX*2;
+    const imgH=imgW*(chart.h/chart.w);
+    doc.addImage(chart.dataUrl,'PNG',marginX,y,imgW,imgH);
+    y+=imgH+24;
+  }
+
+  // listado de pagos
+  doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(43,43,43);
+  doc.text('Pagos del mes', marginX, y); y+=18;
+
+  const cols=[
+    {t:'Fecha',x:marginX},
+    {t:'Cliente',x:marginX+55},
+    {t:'Servicio',x:marginX+170},
+    {t:'Tipo',x:marginX+330},
+    {t:'Monto',x:pageW-marginX,align:'right'}
+  ];
+  function dibujarHeaderTabla(){
+    doc.setFillColor(240,236,230);
+    doc.rect(marginX-4, y-12, pageW-marginX*2+8, 18, 'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(90,90,90);
+    cols.forEach(c=>doc.text(c.t, c.x, y, c.align?{align:c.align}:undefined));
+    y+=16;
+  }
+  dibujarHeaderTabla();
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(50,50,50);
+
+  if(!_ingCache.length){
+    doc.setTextColor(140,140,140);
+    doc.text('No hay pagos registrados este mes.', marginX, y);
+    y+=16;
+  }
+  _ingCache.forEach(t=>{
+    if(y>pageH-marginBottom){
+      doc.addPage(); y=54;
+      dibujarHeaderTabla();
+      doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(50,50,50);
+    }
+    const fecha=t.fecha?new Date(t.fecha+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}):'';
+    doc.text(fecha, cols[0].x, y);
+    doc.text(recortar(t.cliente_nombre,17), cols[1].x, y);
+    doc.text(recortar(t.servicio_nombre,25), cols[2].x, y);
+    doc.text(t.tipo_pago==='total'?'Total':'Seña', cols[3].x, y);
+    doc.text('$'+(t.monto_pagado||0).toLocaleString('es-AR'), cols[4].x, y, {align:'right'});
+    y+=16;
+  });
+
+  const totalPages=doc.internal.getNumberOfPages();
+  for(let p=1;p<=totalPages;p++){
+    doc.setPage(p);
+    doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(160,160,160);
+    doc.text('Generado el '+new Date().toLocaleDateString('es-AR')+' · Página '+p+' de '+totalPages, marginX, pageH-24);
+  }
+
+  doc.save(`ingresos-dora-${_ingMesCache}.pdf`);
+  showToast('PDF descargado');
 }
 
 /* ---------- helpers ---------- */

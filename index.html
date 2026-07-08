@@ -98,7 +98,7 @@
     <div class="senia-tag" id="seniaTag"></div>
   </div>
 
-  <div class="steps">
+  <div class="steps" id="pasosBar">
     <div class="dot on" id="d0"></div>
     <div class="dot" id="d1"></div>
     <div class="dot" id="d2"></div>
@@ -154,10 +154,10 @@
 
   <footer>
     <div>
-      <b style="color:var(--ink)">Dora Aguirre · Belleza integral</b><br>
-      <a href="https://instagram.com/doraaguirre.esteticaintegral" target="_blank">@doraaguirre.esteticaintegral</a>
-      &nbsp;·&nbsp;
-      <a href="https://wa.me/5493476530972" target="_blank">WhatsApp 3476-530972</a>
+      <b id="fNombre" style="color:var(--ink)">Dora Aguirre · Belleza integral</b><br>
+      <a id="fInsta" href="#" target="_blank"></a>
+      <span id="fSep">&nbsp;·&nbsp;</span>
+      <a id="fWsp" href="#" target="_blank"></a>
     </div>
     <div class="brand">
       © 2026 Todos los derechos reservados<br>
@@ -189,8 +189,32 @@ let CFG={}, servicios=[], sel={servicio:null,fecha:null,hora:null,tipoPago:'seni
   document.getElementById('seniaTag').textContent=
     `Seña para reservar: $${(CFG.senia||0).toLocaleString('es-AR')}`;
   document.title='Reservá tu turno · '+(CFG.nombre_local||'');
+  pintarFooter(CFG);
+
+  if(CFG.pausado){
+    document.getElementById('pasosBar').style.display='none';
+    document.getElementById('step0').innerHTML=`
+      <div class="final">
+        <div class="ic">🌙</div>
+        <h2>Reservas cerradas por ahora</h2>
+        <p class="sub">${esc(CFG.pausado_mensaje||'Volvemos pronto. Gracias por tu paciencia.')}</p>
+      </div>`;
+    return;
+  }
   loadServicios();
 })();
+
+function pintarFooter(cfg){
+  document.getElementById('fNombre').textContent=cfg.nombre_local||'Dora Aguirre · Belleza integral';
+  const insta=cfg.instagram;
+  const fi=document.getElementById('fInsta');
+  if(insta){fi.href='https://instagram.com/'+insta;fi.textContent='@'+insta;fi.style.display='';document.getElementById('fSep').style.display='';}
+  else{fi.style.display='none';document.getElementById('fSep').style.display='none';}
+  const wspNum=(cfg.whatsapp||'').replace(/[^0-9]/g,'');
+  const fw=document.getElementById('fWsp');
+  if(wspNum){fw.href='https://wa.me/'+wspNum;fw.textContent='WhatsApp';fw.style.display='';}
+  else{fw.style.display='none';}
+}
 
 async function loadServicios(){
   const {data}=await sb.from('servicios').select('*').eq('activo',true).order('creado');
@@ -228,7 +252,7 @@ async function loadSlots(){
 
   const dur=sel.servicio.duracion_min;
   const ocupados=(turnos||[]).map(t=>({fecha:t.fecha,ini:toMin(t.hora),fin:toMin(t.hora)+t.duracion_min}));
-  const ahora=new Date();
+  const ahora=new Date(Date.now()+(CFG.anticipacion_horas||0)*3600000);
 
   const byDay={};
   disp.forEach(fr=>{
