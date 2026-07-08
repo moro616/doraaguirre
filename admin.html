@@ -102,6 +102,10 @@
   .pill.ok{background:#e4f2ea;color:var(--ok)}
   .pill.pend{background:var(--teal-soft);color:var(--teal)}
 
+  .banner-pausa{background:#fbf1f1;border:1px solid #e6c4c4;color:var(--danger);
+    border-radius:12px;padding:14px 16px;margin-bottom:14px;font-size:.9rem;line-height:1.5}
+  .banner-pausa b{display:block;margin-bottom:2px;font-family:Georgia,serif;font-size:1rem}
+
   .day-group{margin-bottom:16px}
   .day-group .day-h{font-size:.8rem;color:var(--teal);
     text-transform:uppercase;letter-spacing:.06em;margin:0 0 8px 2px}
@@ -206,6 +210,7 @@
   <section id="s-agenda" class="on">
     <h3 style="margin:0 0 4px">Turnos reservados</h3>
     <p class="hint">Solo aparecen los turnos con seña paga.</p>
+    <div id="agendaAviso"></div>
     <div id="agendaList"></div>
   </section>
 
@@ -291,6 +296,9 @@
       <label>Mensaje para las clientas</label>
       <input id="cPausadoMsg" placeholder="Estamos de vacaciones, volvemos el 20/07">
       <div id="pausadoEstado" style="display:none;margin:-6px 0 14px"></div>
+      <div class="inline-actions" style="margin-bottom:14px">
+        <button class="btn-ghost btn-sm" onclick="quitarCierre()">Quitar cierre</button>
+      </div>
 
       <button class="btn-gold" onclick="saveConf()" style="margin-top:6px">Guardar cambios</button>
     </div>
@@ -450,6 +458,7 @@ async function loadConf(){
     document.getElementById('cPausadoHasta').value=data.pausado_hasta||'';
     document.getElementById('cPausadoMsg').value=data.pausado_mensaje||'';
     pintarEstadoPausa(data);
+    pintarAvisoAgenda(data);
     document.getElementById('hLocal').textContent=data.nombre_local;
     pintarFooter(data);
   }
@@ -472,6 +481,23 @@ async function saveConf(){
   document.getElementById('hLocal').textContent=document.getElementById('cNom').value;
   showToast('Ajustes guardados');
   loadConf();
+}
+async function quitarCierre(){
+  document.getElementById('cPausadoDesde').value='';
+  document.getElementById('cPausadoHasta').value='';
+  document.getElementById('cPausadoMsg').value='';
+  await saveConf();
+  showToast('Cierre quitado, las reservas ya están abiertas');
+}
+function pintarAvisoAgenda(cfg){
+  const box=document.getElementById('agendaAviso');
+  if(!box)return;
+  if(!estaPausado(cfg)){box.innerHTML='';return;}
+  const hasta=cfg.pausado_hasta?' hasta el '+fechaLarga(cfg.pausado_hasta):' (sin fecha de reapertura todavía)';
+  box.innerHTML=`<div class="banner-pausa">
+    <b>🌙 Reservas cerradas${hasta}</b>
+    ${esc(cfg.pausado_mensaje||'Las clientas no pueden reservar mientras dure el cierre.')}
+  </div>`;
 }
 function estaPausado(cfg){
   const hoy=new Date().toISOString().slice(0,10);
