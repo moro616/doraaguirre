@@ -64,12 +64,19 @@
     font-family:system-ui;letter-spacing:.04em}
 
   /* ---- tabs ---- */
-  .tabs{display:flex;gap:6px;margin-bottom:20px;background:var(--panel);
+  .tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px;background:var(--panel);
     padding:5px;border-radius:12px;border:1px solid var(--line)}
   .tab{flex:1;text-align:center;padding:10px 4px;border-radius:8px;
     font-size:.85rem;color:var(--muted);cursor:pointer;font-weight:600;
     transition:background .15s,color .15s}
   .tab.on{background:var(--teal-soft);color:var(--teal-dk)}
+  @media (max-width:420px){
+    .tabs{justify-content:center}
+    .tab{flex:1 1 30%;font-size:.76rem;padding:9px 2px}
+  }
+  @media (max-width:340px){
+    .tab{flex:1 1 45%}
+  }
 
   section{display:none} section.on{display:block}
 
@@ -84,6 +91,9 @@
   .add-box{background:var(--panel);border:1px dashed var(--line);
     border-radius:12px;padding:16px;margin-bottom:18px}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+  @media (max-width:340px){
+    .grid2{grid-template-columns:1fr}
+  }
 
   .empty{text-align:center;color:var(--muted);padding:36px 16px;
     border:1px dashed var(--line);border-radius:12px;font-size:.9rem}
@@ -237,8 +247,8 @@
   <section id="s-ing">
     <h3 style="margin:0 0 4px">Ingresos</h3>
     <p class="hint">Basado en los pagos acreditados por Mercado Pago.</p>
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px">
-      <input id="ingMes" type="month" style="margin-bottom:0;flex:1" onchange="loadIngresos()">
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px">
+      <input id="ingMes" type="month" style="margin-bottom:0;flex:1;min-width:150px" onchange="loadIngresos()">
       <button class="btn-ghost btn-sm" style="width:auto;white-space:nowrap" onclick="exportarIngresosPDF()">⬇ Descargar PDF</button>
     </div>
 
