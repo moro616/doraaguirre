@@ -33,10 +33,11 @@
 
   label{display:block;font-size:.8rem;color:var(--muted);
     margin:0 0 6px;text-transform:uppercase;letter-spacing:.05em}
-  input,select{width:100%;background:var(--panel2);border:1px solid var(--line);
+  input,select,textarea{width:100%;background:var(--panel2);border:1px solid var(--line);
     color:var(--ink);border-radius:10px;padding:12px 13px;font-size:1rem;
-    margin-bottom:14px;outline:none;transition:border .15s}
-  input:focus,select:focus{border-color:var(--teal)}
+    margin-bottom:14px;outline:none;transition:border .15s;font-family:inherit}
+  input:focus,select:focus,textarea:focus{border-color:var(--teal)}
+  textarea{resize:vertical;min-height:64px}
   .pass-wrap{position:relative}
   .pass-wrap input{padding-right:42px}
   .pass-toggle{position:absolute;right:6px;top:0;bottom:14px;margin:auto 0;
@@ -225,6 +226,8 @@
         <div><label>Precio $</label><input id="sPre" type="number" placeholder="10000"></div>
         <div><label>Duración (min)</label><input id="sDur" type="number" value="60"></div>
       </div>
+      <label>Descripción (opcional)</label>
+      <textarea id="sDesc" placeholder="Contale a la clienta en qué consiste el tratamiento"></textarea>
       <button class="btn-gold" onclick="addServ()">Agregar servicio</button>
     </div>
     <div id="servList"></div>
@@ -547,6 +550,7 @@ function renderServ(){
       <div class="info">
         <b>${esc(s.nombre)}</b>
         <span>$${s.precio.toLocaleString('es-AR')} · ${s.duracion_min} min</span>
+        ${s.descripcion?`<span style="display:block;margin-top:2px;white-space:pre-wrap">${esc(s.descripcion)}</span>`:''}
       </div>
       <div class="actions">
         <button class="btn-ghost btn-sm" onclick="editServ('${s.id}')">Editar</button>
@@ -565,6 +569,8 @@ function editServ(id){
       <div><label>Precio $</label><input id="ep-${id}" type="number" value="${s.precio}"></div>
       <div><label>Duración (min)</label><input id="edm-${id}" type="number" value="${s.duracion_min}"></div>
     </div>
+    <label>Descripción (opcional)</label>
+    <textarea id="ed-${id}" placeholder="Contale a la clienta en qué consiste el tratamiento">${esc(s.descripcion||'')}</textarea>
     <div class="inline-actions">
       <button class="btn-gold btn-sm" onclick="saveServ('${id}')">Guardar</button>
       <button class="btn-ghost btn-sm" onclick="cerrarEditor('se-${id}')">Cancelar</button>
@@ -576,8 +582,9 @@ async function saveServ(id){
   const nombre=document.getElementById('en-'+id).value.trim();
   const precio=parseInt(document.getElementById('ep-'+id).value);
   const dur=parseInt(document.getElementById('edm-'+id).value);
+  const descripcion=document.getElementById('ed-'+id).value.trim();
   if(!nombre||!precio||!dur){showToast('Completá todos los campos');return;}
-  const {error}=await sb.from('servicios').update({nombre,precio,duracion_min:dur}).eq('id',id);
+  const {error}=await sb.from('servicios').update({nombre,precio,duracion_min:dur,descripcion}).eq('id',id);
   if(error){showToast('Error al guardar');return;}
   showToast('Servicio actualizado');loadServ();
 }
@@ -597,9 +604,10 @@ async function addServ(){
   const nombre=document.getElementById('sNom').value.trim();
   const precio=parseInt(document.getElementById('sPre').value);
   const dur=parseInt(document.getElementById('sDur').value)||60;
+  const descripcion=document.getElementById('sDesc').value.trim();
   if(!nombre||!precio){showToast('Completá nombre y precio');return;}
-  await sb.from('servicios').insert({nombre,precio,duracion_min:dur});
-  document.getElementById('sNom').value='';document.getElementById('sPre').value='';
+  await sb.from('servicios').insert({nombre,precio,duracion_min:dur,descripcion});
+  document.getElementById('sNom').value='';document.getElementById('sPre').value='';document.getElementById('sDesc').value='';
   showToast('Servicio agregado');loadServ();
 }
 

@@ -37,10 +37,11 @@
 
   .opt{background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.03);
     padding:15px;margin-bottom:10px;cursor:pointer;display:flex;
-    align-items:center;justify-content:space-between;gap:10px;transition:border .15s}
+    align-items:flex-start;justify-content:space-between;gap:10px;transition:border .15s}
   .opt:hover,.opt.sel{border-color:var(--teal);box-shadow:0 2px 10px rgba(67,150,156,.12)}
   .opt b{display:block;font-size:1.02rem}
   .opt span{color:var(--muted);font-size:.85rem}
+  .opt .desc{display:block;color:var(--muted);font-size:.8rem;margin-top:4px;line-height:1.4;white-space:pre-wrap}
   .opt .price{color:var(--teal);font-weight:600;font-size:.95rem;flex-shrink:0}
 
   .slot-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
@@ -191,7 +192,7 @@ let CFG={}, servicios=[], sel={servicio:null,fecha:null,hora:null,tipoPago:'seni
   document.title='Reservá tu turno · '+(CFG.nombre_local||'');
   pintarFooter(CFG);
 
-  if(CFG.pausado){
+  if(estaPausado(CFG)){
     document.getElementById('pasosBar').style.display='none';
     document.getElementById('step0').innerHTML=`
       <div class="final">
@@ -215,6 +216,13 @@ function pintarFooter(cfg){
   if(wspNum){fw.href='https://wa.me/'+wspNum;fw.textContent='WhatsApp';fw.style.display='';}
   else{fw.style.display='none';}
 }
+function estaPausado(cfg){
+  const hoy=new Date().toISOString().slice(0,10);
+  if(!cfg.pausado_desde)return false;
+  if(hoy<cfg.pausado_desde)return false;
+  if(cfg.pausado_hasta && hoy>cfg.pausado_hasta)return false;
+  return true;
+}
 
 async function loadServicios(){
   const {data}=await sb.from('servicios').select('*').eq('activo',true).order('creado');
@@ -226,6 +234,7 @@ async function loadServicios(){
       <div>
         <b>${esc(s.nombre)}</b>
         <span>${s.duracion_min} min</span>
+        ${s.descripcion?`<span class="desc">${esc(s.descripcion)}</span>`:''}
       </div>
       <div class="price">$${s.precio.toLocaleString('es-AR')}</div>
     </div>`).join('');
