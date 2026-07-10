@@ -374,7 +374,7 @@ async function reservar(){
     const res=await fetch(`${SUPABASE_URL}/functions/v1/crear-pago`,{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':`Bearer ${SUPABASE_ANON_KEY}`},
-      body:JSON.stringify({turno_id:turno.id})
+      body:JSON.stringify({turno_id:turno.id,base_url:location.href.replace(/index\.html.*$/,'').replace(/\/$/,'')})
     });
     const data=await res.json();
     if(data.init_point){location.href=data.init_point;}   // → Checkout Pro
