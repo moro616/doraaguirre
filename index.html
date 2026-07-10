@@ -149,13 +149,9 @@
     <input id="cliWsp" type="tel" placeholder="341 123 4567">
 
     <label>¿Cómo preferís pagar?</label>
-    <div class="opt sel" id="optSenia" onclick="elegirPago('senia')">
+    <div class="opt sel" id="optSenia">
       <div><b>Pagar la seña</b><span>Reservás ahora, el resto lo pagás el día del turno</span></div>
       <div class="price" id="precioSenia"></div>
-    </div>
-    <div class="opt" id="optTotal" onclick="elegirPago('total')">
-      <div><b>Pagar todo ahora</b><span>Pagás el servicio completo por adelantado</span></div>
-      <div class="price" id="precioTotal"></div>
     </div>
 
     <div class="resumen" id="resumen"></div>
@@ -320,32 +316,20 @@ function pickSlot(fecha,hora,el){
 function pintarResumen(){
   const s=sel.servicio;
   document.getElementById('precioSenia').textContent=`$${(CFG.senia||0).toLocaleString('es-AR')}`;
-  document.getElementById('precioTotal').textContent=`$${s.precio.toLocaleString('es-AR')}`;
-  actualizarPago();
-}
-
-function elegirPago(tipo){
-  sel.tipoPago=tipo;
-  document.getElementById('optSenia').classList.toggle('sel',tipo==='senia');
-  document.getElementById('optTotal').classList.toggle('sel',tipo==='total');
   actualizarPago();
 }
 
 function actualizarPago(){
   const s=sel.servicio;
-  const esTotal=sel.tipoPago==='total';
-  const aPagar=esTotal?s.precio:(CFG.senia||0);
+  const aPagar=CFG.senia||0;
   document.getElementById('resumen').innerHTML=`
     <div class="l"><span>Servicio</span><span>${esc(s.nombre)}</span></div>
     <div class="l"><span>Día</span><span>${fechaLarga(sel.fecha)}</span></div>
     <div class="l"><span>Hora</span><span>${sel.hora}</span></div>
     <div class="l"><span>Precio total</span><span>$${s.precio.toLocaleString('es-AR')}</span></div>
-    <div class="l total"><span>${esTotal?'Total a pagar ahora':'Seña a pagar ahora'}</span><span>$${aPagar.toLocaleString('es-AR')}</span></div>`;
-  const btn=document.getElementById('btnPagar');
-  btn.textContent=esTotal?'Pagar todo y reservar':'Pagar seña y reservar';
-  document.getElementById('notaPago').innerHTML=esTotal
-    ?'Pagás el servicio completo ahora y tu turno queda confirmado.'
-    :'Al pagar la seña, tu turno queda confirmado.<br>La seña se descuenta del total del servicio.';
+    <div class="l total"><span>Seña a pagar ahora</span><span>$${aPagar.toLocaleString('es-AR')}</span></div>`;
+  document.getElementById('btnPagar').textContent='Pagar seña y reservar';
+  document.getElementById('notaPago').innerHTML='Al pagar la seña, tu turno queda confirmado.<br>La seña se descuenta del total del servicio.';
 }
 
 /* ---------- RESERVAR + PAGAR ---------- */
