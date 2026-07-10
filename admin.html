@@ -138,6 +138,29 @@
   .bar-row .bar-h span:last-child{color:var(--teal-dk);font-weight:600}
   .bar-track{background:var(--panel2);border-radius:20px;height:8px;overflow:hidden}
   .bar-fill{background:linear-gradient(135deg,var(--teal),var(--teal-dk));height:100%;border-radius:20px}
+
+  /* ---- Ingresos: stats + pagos ---- */
+  .ing-stats{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px}
+  .ing-stat{flex:1 1 160px;padding:16px;margin:0;text-align:left}
+  .ing-stat label{margin-bottom:4px}
+  .ing-stat .num{font-family:Georgia,serif;font-weight:700;color:var(--teal-dk);
+    font-size:1.6rem;line-height:1.15}
+  .ing-stat .num.small{font-size:1.3rem}
+
+  .pago-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.03)}
+  .pago-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
+  .pago-cliente{min-width:0}
+  .pago-cliente b{display:block;font-size:1rem}
+  .pago-cliente span{color:var(--muted);font-size:.85rem}
+  .pago-monto{flex-shrink:0;text-align:right}
+  .pago-monto b{display:block;font-size:1.05rem;color:var(--teal-dk);margin-bottom:4px;white-space:nowrap}
+  .pago-meta{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);
+    display:flex;flex-wrap:wrap;gap:6px 18px;font-size:.78rem;color:var(--muted)}
+  .pago-meta b{color:var(--ink);font-weight:600}
+  @media (max-width:380px){
+    .pago-monto{text-align:left}
+  }
 </style>
 </head>
 <body>
@@ -260,10 +283,15 @@
       <button class="btn-ghost btn-sm" style="width:auto;white-space:nowrap" onclick="exportarIngresosPDF()">⬇ Descargar PDF</button>
     </div>
 
-    <div class="card" style="text-align:center;margin:0 0 18px">
-      <label style="margin-bottom:2px">Total del mes</label>
-      <div id="ingTotal" style="font-family:Georgia,serif;font-size:2rem;font-weight:700;color:var(--teal-dk)">$0</div>
-      <div id="ingCant" style="color:var(--muted);font-size:.85rem;margin-top:2px"></div>
+    <div class="ing-stats">
+      <div class="card ing-stat">
+        <label>Total del mes</label>
+        <div id="ingTotal" class="num">$0</div>
+      </div>
+      <div class="card ing-stat">
+        <label>Pagos acreditados</label>
+        <div id="ingCant" class="num small">0</div>
+      </div>
     </div>
 
     <h3 style="margin:0 0 10px;font-size:1rem">Por servicio</h3>
@@ -789,8 +817,7 @@ async function loadIngresos(){
 
   const total=pagos.reduce((a,t)=>a+(t.monto_pagado||0),0);
   document.getElementById('ingTotal').textContent=`$${total.toLocaleString('es-AR')}`;
-  document.getElementById('ingCant').textContent=
-    pagos.length?`${pagos.length} pago${pagos.length>1?'s':''} acreditado${pagos.length>1?'s':''}`:'Sin pagos este mes';
+  document.getElementById('ingCant').textContent=pagos.length;
 
   // desglose por servicio
   const porServ={};
@@ -814,18 +841,29 @@ async function loadIngresos(){
   const contL=document.getElementById('ingList');
   if(!pagos.length){contL.innerHTML='<div class="empty">No hay pagos registrados en este mes.</div>';}
   else{
-    contL.innerHTML=pagos.map(t=>`
-      <div class="row">
-        <div class="info">
-          <b>${esc(t.cliente_nombre)}</b>
-          <span>${esc(t.servicio_nombre)} · turno ${fechaLarga(t.fecha)}
-            ${t.pagado_en?' · pagado '+new Date(t.pagado_en).toLocaleDateString('es-AR'):''}</span>
+    contL.innerHTML=pagos.map(t=>{
+      const turnoTxt=`${fechaLarga(t.fecha)}${t.hora?' · '+t.hora.slice(0,5)+'hs':''}`;
+      const pagadoTxt=t.pagado_en
+        ? new Date(t.pagado_en).toLocaleDateString('es-AR')+' · '+new Date(t.pagado_en).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})+'hs'
+        : '—';
+      return `
+      <div class="pago-card">
+        <div class="pago-top">
+          <div class="pago-cliente">
+            <b>${esc(t.cliente_nombre)}</b>
+            <span>${esc(t.servicio_nombre)}</span>
+          </div>
+          <div class="pago-monto">
+            <b>$${(t.monto_pagado||0).toLocaleString('es-AR')}</b>
+            <span class="pill ${t.tipo_pago==='total'?'ok':'pend'}">${t.tipo_pago==='total'?'Pago total':'Seña'}</span>
+          </div>
         </div>
-        <div class="actions" style="flex-direction:column;align-items:flex-end;gap:4px">
-          <b>$${(t.monto_pagado||0).toLocaleString('es-AR')}</b>
-          <span class="pill ${t.tipo_pago==='total'?'ok':'pend'}">${t.tipo_pago==='total'?'Total':'Seña'}</span>
+        <div class="pago-meta">
+          <span>Turno: <b>${turnoTxt}</b></span>
+          <span>Pagado: <b>${pagadoTxt}</b></span>
         </div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
   }
 }
 
