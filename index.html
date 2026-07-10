@@ -270,14 +270,18 @@ async function loadSlots(){
 
   const [{data:disp},{data:turnos}]=await Promise.all([
     sb.from('disponibilidad').select('*').gte('fecha',hoy).order('fecha').order('hora_ini'),
-    sb.from('turnos').select('fecha,hora,duracion_min')
+    sb.from('turnos').select('fecha,hora,duracion_min,estado,expira')
       .in('estado',['confirmado','pendiente']).gte('fecha',hoy)
   ]);
 
   if(!disp||!disp.length){c.innerHTML='<div class="empty">No hay horarios disponibles por ahora. Volvé más tarde.</div>';return;}
 
   const dur=sel.servicio.duracion_min;
-  const ocupados=(turnos||[]).map(t=>({fecha:t.fecha,ini:toMin(t.hora),fin:toMin(t.hora)+t.duracion_min}));
+  const nowIso=new Date().toISOString();
+  // Un turno "pendiente" cuya reserva ya venció (el cliente no llegó a pagar)
+  // no debe seguir ocupando el horario para siempre.
+  const vigentes=(turnos||[]).filter(t=>t.estado==='confirmado' || !t.expira || t.expira>nowIso);
+  const ocupados=vigentes.map(t=>({fecha:t.fecha,ini:toMin(t.hora),fin:toMin(t.hora)+t.duracion_min}));
   const ahora=new Date(Date.now()+(CFG.anticipacion_horas||0)*3600000);
 
   const byDay={};
