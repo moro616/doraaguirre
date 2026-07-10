@@ -283,10 +283,13 @@ async function loadSlots(){
   const byDay={};
   disp.forEach(fr=>{
     let m=toMin(fr.hora_ini); const fin=toMin(fr.hora_fin);
+    const cupos=fr.cupos||1;
     while(m+dur<=fin){
-      const choca=ocupados.some(o=>o.fecha===fr.fecha && m<o.fin && (m+dur)>o.ini);
+      // cuenta cuántos turnos ya ocupan este horario; el slot sigue libre
+      // mientras no se llenen todos los cupos de la franja.
+      const solapados=ocupados.filter(o=>o.fecha===fr.fecha && m<o.fin && (m+dur)>o.ini).length;
       const slotDate=new Date(fr.fecha+'T'+toHHMM(m)+':00');
-      if(!choca && slotDate>ahora){
+      if(solapados<cupos && slotDate>ahora){
         (byDay[fr.fecha]=byDay[fr.fecha]||[]).push(m);
       }
       m+=dur; // slots consecutivos del largo del servicio

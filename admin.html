@@ -225,6 +225,9 @@
         <div><label>Desde</label><input id="dIni" type="time" value="09:00"></div>
         <div><label>Hasta</label><input id="dFin" type="time" value="13:00"></div>
       </div>
+      <label>Cupos en simultáneo</label>
+      <input id="dCupos" type="number" min="1" step="1" value="1">
+      <p class="hint" style="margin-top:-10px">Cuántas clientas podés atender al mismo tiempo en esta franja (ej: 2 si tenés dos camillas/estilistas).</p>
       <button class="btn-gold" onclick="addDisp()">Abrir franja</button>
     </div>
     <div id="dispList"></div>
@@ -671,10 +674,11 @@ function renderDisp(){
       <div class="day-h">${fechaLarga(f)}${etiquetaDia(f)}</div>
       ${arr.map(d=>{
         const n=turnosEnFranja(d);
+        const cupos=d.cupos||1;
         return `
         <div class="row">
           <div class="info"><b>${d.hora_ini.slice(0,5)} – ${d.hora_fin.slice(0,5)}</b>
-            <span>${n?n+' turno'+(n>1?'s':'')+' reservado'+(n>1?'s':''):'Sin turnos aún'}</span></div>
+            <span>${cupos>1?cupos+' cupos en simultáneo · ':''}${n?n+' turno'+(n>1?'s':'')+' reservado'+(n>1?'s':''):'Sin turnos aún'}</span></div>
           <div class="actions">
             <button class="btn-ghost btn-sm" onclick="editDisp('${d.id}')">Editar</button>
           </div>
@@ -691,6 +695,8 @@ function editDisp(id){
       <div><label>Desde</label><input id="fi-${id}" type="time" value="${d.hora_ini.slice(0,5)}"></div>
       <div><label>Hasta</label><input id="ff-${id}" type="time" value="${d.hora_fin.slice(0,5)}"></div>
     </div>
+    <label>Cupos en simultáneo</label>
+    <input id="fc-${id}" type="number" min="1" step="1" value="${d.cupos||1}">
     <div class="inline-actions">
       <button class="btn-gold btn-sm" onclick="saveDisp('${id}')">Guardar</button>
       <button class="btn-ghost btn-sm" onclick="cerrarEditor('fe-${id}')">Cancelar</button>
@@ -705,9 +711,11 @@ function seSolapa(fecha,hi,hf,exceptoId){
 async function saveDisp(id){
   const d=_dispCache.find(x=>x.id==id);
   const hi=document.getElementById('fi-'+id).value,hf=document.getElementById('ff-'+id).value;
+  const cupos=parseInt(document.getElementById('fc-'+id).value)||1;
   if(!hi||!hf||hf<=hi){showToast('Revisá las horas');return;}
+  if(cupos<1){showToast('Los cupos tienen que ser 1 o más');return;}
   if(seSolapa(d.fecha,hi,hf,id)){showToast('Se superpone con otra franja de ese día');return;}
-  const {error}=await sb.from('disponibilidad').update({hora_ini:hi,hora_fin:hf}).eq('id',id);
+  const {error}=await sb.from('disponibilidad').update({hora_ini:hi,hora_fin:hf,cupos}).eq('id',id);
   if(error){showToast('Error al guardar');return;}
   showToast('Franja actualizada');loadDisp();
 }
@@ -726,11 +734,13 @@ async function addDisp(){
   const fecha=document.getElementById('dFecha').value;
   const hi=document.getElementById('dIni').value;
   const hf=document.getElementById('dFin').value;
+  const cupos=parseInt(document.getElementById('dCupos').value)||1;
   if(!fecha||!hi||!hf){showToast('Completá fecha y horas');return;}
   if(fecha<new Date().toISOString().slice(0,10)){showToast('No podés abrir una franja en una fecha pasada');return;}
   if(hf<=hi){showToast('El "hasta" debe ser mayor');return;}
+  if(cupos<1){showToast('Los cupos tienen que ser 1 o más');return;}
   if(seSolapa(fecha,hi,hf,null)){showToast('Se superpone con otra franja de ese día');return;}
-  await sb.from('disponibilidad').insert({fecha,hora_ini:hi,hora_fin:hf});
+  await sb.from('disponibilidad').insert({fecha,hora_ini:hi,hora_fin:hf,cupos});
   showToast('Franja abierta');loadDisp();
 }
 
